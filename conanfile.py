@@ -3,7 +3,11 @@ from conans import (
 )
 
 import os
+import os.path
 import subprocess
+
+
+SOURCE_URL = "https://github.com/sparsehash/sparsehash"
 
 
 SPARSE_HASH_TEST_FILES = [
@@ -18,36 +22,67 @@ SPARSE_HASH_TEST_FILES = [
 
 
 class SparsehashConan(ConanFile):
-    name = "libsparsehash"
-    version = "2019.07.18"
-    license = "MIT"
+    name = "sparsehash"
+
+    homepage = SOURCE_URL
+    version = "2.0.3"
+    license = "BSD-3-Clause"
+    topics = ("conan", "libsparsehash",
+              "dense_hash_map", "sparse_hash_map",
+              "dense_hash_set", "sparse_hash_set")
+    settings = ("os", "compiler", "build_type", "arch")
+
     author = "Xiaoge Su <magichp|at|gmail.com>"
     url = "https://github.com/xis19/conan-sparsehash"
     description = "Conan recipe for Google sparse hash library"
-    topics = ("conan", "libsparsehash", "dense_hash_map", "sparse_hash_map", "dense_hash_set", "sparse_hash_set")
-    settings = "os", "compiler", "build_type", "arch"
-    options = {"shared": [True, False]}
-    default_options = "shared=False"
+
+    options = {}
+    default_options = {}
+
     generators = "cmake"
 
-    exports = ["LICENSE"]
+    exports = ["COPYING"]
+
+    _source_subfolder = "_source_subfolder"
 
     def source(self):
-        git = tools.Git("sparsehash")
-        git.clone("https://github.com/sparsehash/sparsehash.git", "master")
+        tools.get(
+            "{homepage}/archive/sparsehash-{version}.tar.gz".format(
+                homepage=self.homepage,
+                version=self.version
+            ),
+            sha256="05e986a5c7327796dad742182b2d10805a8d4f511ad090da0490f146c1ff7a8c"
+        )
+        extracted_directory = "{}-{}-{}".format(
+            self.name, self.name, self.version
+        )
+        os.rename(extracted_directory, self._source_subfolder)
 
     def build(self):
-        with tools.chdir("sparsehash"):
+        with tools.chdir(self._source_subfolder):
+            # Even this is a header_only package, we still need to run a build
+            # in order to generate sparseconfig.h
             autotools = AutoToolsBuildEnvironment(self)
             autotools.configure()
             autotools.make()
 
-            # Run the tests sparsehash
-            for test in SPARSE_HASH_TEST_FILES:
-                subprocess.check_call(os.path.join('.', test))
+            if self.develop:
+                # Run the tests sparsehash
+                for test in SPARSE_HASH_TEST_FILES:
+                    subprocess.check_call(os.path.join('.', test))
 
     def package(self):
-        self.copy("*", dst="include/sparsehash", src="sparsehash/src/sparsehash")
+        # Sparsehash uses "COPYING" instead of "LICENSE"
+        self.copy(
+            pattern="COPYING",
+            dst="licenses",
+            src=self._source_subfolder
+        )
+        self.copy(
+            "*",
+            dst="include/sparsehash",
+            src=os.path.join(self._source_subfolder, 'src', 'sparsehash')
+        )
 
     def package_id(self):
         self.info.header_only()
