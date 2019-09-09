@@ -5,7 +5,7 @@ import os
 class SparsehashConan(ConanFile):
     name = "sparsehash"
     version = "2.0.3"
-    description = "Conan recipe for Google sparse hash library"
+    description = "The C++ associative containers"
     homepage = "https://github.com/sparsehash/sparsehash"
     license = "BSD-3-Clause"
     topics = ("conan", "libsparsehash",
